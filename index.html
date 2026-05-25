@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Catálogo AR</title>
+    
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+
+    <style>
+      /* Estilo para el muro de registro */
+      #login-screen {
+        position: absolute; z-index: 1000; top: 0; left: 0; width: 100%; height: 100%;
+        background: white; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      }
+      .hidden { display: none !important; }
+    </style>
+  </head>
+
+  <body>
+<div id="login-screen">
+  <div id="pass-section">
+    <h1>Bienvenido al Catálogo</h1>
+    <p>Introduce tu código de acceso:</p>
+    <input type="password" id="password-input" style="padding: 10px; font-size: 16px;">
+    <button onclick="checkLogin()" style="padding: 10px 20px; font-size: 16px;">Entrar</button>
+  </div>
+
+  <div id="ready-section" class="hidden" style="text-align: center;">
+    <h1>¡Código Correcto!</h1>
+    <p>Toca el botón de abajo para activar los vídeos con sonido:</p>
+    <button onclick="desbloquearYEntrar()" style="padding: 20px 40px; font-size: 20px; background: #28a745; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold;">
+      🚀 ENTRAR AL CATÁLOGO
+    </button>
+  </div>
+</div>
+<a-scene id="ar-scene" 
+         mindar-image="imageTargetSrc: ./targets.mind; filterMinCF:0.001; filterBeta: 0.01;" 
+         class="hidden" 
+         color-space="sRGB" 
+         renderer="colorManagement: true, physicallyCorrectLights: true" 
+         vr-mode-ui="enabled: false" 
+         device-orientation-permission-ui="enabled: true">
+         
+  <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>      <button onclick="cerrarSesion()" style="position: absolute; bottom: 20px; left: 20px; z-index: 9999; padding: 10px; background: red; color: white; border: none; border-radius: 5px;">
+        Probar Login de nuevo
+      </button>
+
+<!-- Foto 0 -->
+<a-entity mindar-image-target="targetIndex: 0">
+  <a-video src="#video0" width="1" height="0.55" position="0 0 0"></a-video>
+</a-entity>
+
+<!-- Foto 1 -->
+<a-entity mindar-image-target="targetIndex: 1">
+  <a-video src="#video1" width="1" height="0.55" position="0 0 0"></a-video>
+</a-entity>
+
+<!-- Foto 2-->
+<a-entity mindar-image-target="targetIndex: 2">
+  <a-video src="#video2" width="1" height="0.55" position="0 0 0"></a-video>
+</a-entity>    </a-scene>
+
+<!-- Foto 3-->
+<a-entity mindar-image-target="targetIndex: 3">
+  <a-video src="#video3" width="1" height="0.55" position="0 0 0"></a-video>
+</a-entity>    </a-scene>
+
+
+
+    <a-assets>
+        <video id="video0" src="./video0.mp4" preload="auto" loop="true" muted playsinline webkit-playsinline></video>
+        <video id="video1" src="./video1.mp4" preload="auto" loop="true" muted playsinline webkit-playsinline></video>
+        <video id="video2" src="./video2.mp4" preload="auto" loop="true" muted playsinline webkit-playsinline></video>
+        <video id="video3" src="./video3.mp4" preload="auto" loop="true" muted playsinline webkit-playsinline></video>
+    </a-assets>
+
+<script>
+  // Al cargar la página, comprobamos si ya pasó el login anterior
+  window.onload = () => {
+    if (localStorage.getItem("acceso-concedido") === "true") {
+      // Si ya tenía acceso, le mostramos el botón de entrar directo para no romper el permiso de audio
+      document.getElementById("pass-section").classList.add("hidden");
+      document.getElementById("ready-section").classList.remove("hidden");
+    }
+  };
+
+  // Paso 1: Comprobar la contraseña
+  function checkLogin() {
+    const pass = document.getElementById("password-input").value;
+    if (pass === "1234") { 
+      localStorage.setItem("acceso-concedido", "true");
+      // Ocultamos la contraseña y mostramos el botón gordo de activación
+      document.getElementById("pass-section").classList.add("hidden");
+      document.getElementById("ready-section").classList.remove("hidden");
+    } else {
+      alert("Código incorrecto");
+    }
+  }
+
+  // Paso 2: La acción del botón gordo que da los permisos al móvil
+  function desbloquearYEntrar() {
+    // Ocultamos todo el muro de login y mostramos la cámara
+    document.getElementById("login-screen").classList.add("hidden");
+    document.getElementById("ar-scene").classList.remove("hidden");
+    
+    // Forzamos un inicio de reproducción en silencio en TODOS los vídeos de la página
+    // Esto es lo que el navegador necesita registrar para dar el "OK" definitivo
+    const todosLosVideos = document.querySelectorAll('video');
+    todosLosVideos.forEach(video => {
+      video.muted = true;
+      video.play().then(() => {
+        video.pause(); // Lo pausamos inmediatamente, ya tiene el permiso concedido
+      }).catch(e => console.log("Error al precargar:", e));
+    });
+  }
+
+  // Paso 3: Controlar la Realidad Aumentada cuando detecta la foto
+  const sceneEl = document.querySelector('a-scene');
+  
+  sceneEl.addEventListener("arReady", (event) => {
+    console.log("Cámara AR lista");
+    const targets = document.querySelectorAll('[mindar-image-target]');
+    
+    targets.forEach((target, index) => {
+      
+      // CUANDO DETECTA LA FOTO
+      target.addEventListener("targetFound", event => {
+        const video = document.querySelector(`#video${index + 1}`);
+        if (video) {
+          video.muted = false; // Le quitamos el silencio porque ya tenemos permiso
+          video.play();
+        }
+      });
+
+      // CUANDO PIERDE LA FOTO
+      target.addEventListener("targetLost", event => {
+        const video = document.querySelector(`#video${index + 1}`);
+        if (video) {
+          video.pause();
+        }
+      });
+      
+    });
+  });
+</script>
+
+  </body>
+</html>
