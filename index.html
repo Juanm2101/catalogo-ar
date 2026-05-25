@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Mi Catálogo AR</title>
+    
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+
+    <style>
+      /* Sistema de capas limpio para evitar que la cámara se congele */
+      #login-screen {
+        position: fixed; z-index: 9999; top: 0; left: 0; width: 100%; height: 100%;
+        background: white; display: flex; flex-direction: column; align-items: center; justify-content: center;
+        opacity: 1; transition: opacity 0.5s ease;
+      }
+      
+      /* En lugar de 'display:none', usamos opacidad y pointer-events para que la cámara no sufra cortes */
+      .desactivado { 
+        opacity: 0 !important; 
+        pointer-events: none !important; 
+      }
+      
+      #btn-logout {
+        position: fixed; bottom: 20px; left: 20px; z-index: 9998; 
+        padding: 12px 20px; background: #dc3545; color: white; 
+        border: none; border-radius: 5px; font-weight: bold; cursor: pointer;
+        display: none;
+      }
+    </style>
+  </head>
+
+  <body>
+
+    <div id="login-screen">
+      <div id="pass-section">
+        <h1>Bienvenido al Catálogo</h1>
+        <p>Introduce tu código de acceso:</p>
+        <input type="text" id="password-input" autocomplete="off" style="padding: 10px; font-size: 16px; -webkit-text-security: disc;">
+        <button id="btn-entrar" style="padding: 10px 20px; font-size: 16px;">Entrar</button>
+      </div>
+
+      <div id="ready-section" style="display: none; text-align: center; padding: 20px;">
+        <h1>¡Código Correcto!</h1>
+        <p>Toca el botón de abajo para activar la cámara y los vídeos:</p>
+        <button id="btn-activar-ar" style="padding: 20px 40px; font-size: 20px; background: #28a745; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold;">
+          🚀 ENTRAR AL CATÁLOGO
+        </button>
+      </div>
+    </div>
+
+    <button id="btn-logout" onclick="cerrarSesion()">
+      🔄 Probar Login de nuevo
+    </button>
+
+    <a-scene id="ar-scene" 
+             mindar-image="imageTargetSrc: ./targets.mind; filterMinCF:0.001; filterBeta: 0.01; autoStart: true;" 
+             color-space="sRGB" 
+             renderer="colorManagement: true, physicallyCorrectLights: true" 
+             vr-mode-ui="enabled: false" 
+             device-orientation-permission-ui="enabled: true">
+             
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <a-entity mindar-image-target="targetIndex: 0">
+        <a-video src="#video0" width="1" height="0.55" position="0 0 0"></a-video>
+      </a-entity>
+
+      <a-entity mindar-image-target="targetIndex: 1">
+        <a-video src="#video1" width="1" height="0.55" position="0 0 0"></a-video>
+      </a-entity>
+
+      <a-entity mindar-image-target="targetIndex: 2">
+        <a-video src="#video2" width="1" height="0.55" position="0 0 0"></a-video>
+      </a-entity>
+
+      <a-entity mindar-image-target="targetIndex: 3">
+        <a-video src="#video3" width="1" height="0.55" position="0 0 0"></a-video>
+      </a-entity>
+
+    </a-scene>
+
+    <a-assets>
+        <video id="video0" src="./video0.mp4" preload="auto" loop="true" muted playsinline webkit-playsinline></video>
+        <video id="video1" src="./video1.mp4" preload="auto" loop="true" muted playsinline webkit-playsinline></video>
+        <video id="video2" src="./video2.mp4" preload="auto" loop="true" muted playsinline webkit-playsinline></video>
+        <video id="video3" src="./video3.mp4" preload="auto" loop="true" muted playsinline webkit-playsinline></video>
+    </a-assets>
+
+    <script>
+      // Asignamos los eventos de forma segura por ID de JavaScript para evitar falsos clics del teclado
+      document.addEventListener("DOMContentLoaded", () => {
+        document.getElementById("btn-entrar").addEventListener("click", checkLogin);
+        document.getElementById("btn-activar-ar").addEventListener("click", desbloquearYEntrar);
+
+        if (localStorage.getItem("acceso-concedido") === "true") {
+          document.getElementById("pass-section").style.display = "none";
+          document.getElementById("ready-section").style.display = "block";
+        }
+      });
+
+      function checkLogin() {
+        const pass = document.getElementById("password-input").value;
+        if (pass === "1234") { 
+          localStorage.setItem("acceso-concedido", "true");
+          document.getElementById("pass-section").style.display = "none";
+          document.getElementById("ready-section").style.display = "block";
+        } else {
+          alert("Código incorrecto");
+        }
+      }
+
+      function desbloquearYEntrar() {
+        // Desvanecido suave para que la cámara no sufra un parón de renderizado
+        document.getElementById("login-screen").classList.add("desactivado");
+        document.getElementById("btn-logout").style.display = "block";
+        
+        // Desbloqueo seguro de pistas de audio mediante interacción real
+        const todosLosVideos = document.querySelectorAll('video');
+        todosLosVideos.forEach(video => {
+          video.muted = true;
+          video.play().then(() => {
+            video.pause(); 
+          }).catch(e => console.log("Audio preparado"));
+        });
+      }
+
+      function cerrarSesion() {
+        localStorage.removeItem("acceso-concedido");
+        location.reload();
+      }
+
+      // Control de escaneo continuo de Realidad Aumentada
+      const sceneEl = document.querySelector('a-scene');
+      
+      sceneEl.addEventListener("arReady", (event) => {
+        console.log("Escaner activo y listo");
+        const targets = document.querySelectorAll('[mindar-image-target]');
+        
+        targets.forEach((target, index) => {
+          
+          target.addEventListener("targetFound", event => {
+            const video = document.querySelector(`#video${index}`);
+            if (video) {
+              video.muted = false; 
+              video.play().catch(e => console.log("Esperando interacción"));
+            }
+          });
+
+          target.addEventListener("targetLost", event => {
+            const video = document.querySelector(`#video${index}`);
+            if (video) {
+              video.pause();
+            }
+          });
+          
+        });
+      });
+    </script>
+
+  </body>
+</html>
